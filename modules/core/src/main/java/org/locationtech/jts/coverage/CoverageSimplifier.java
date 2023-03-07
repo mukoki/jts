@@ -11,8 +11,8 @@
  */
 package org.locationtech.jts.coverage;
 
-import java.util.BitSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -108,7 +108,10 @@ public class CoverageSimplifier {
     CoverageRingEdges cov = CoverageRingEdges.create(input);
     List<CoverageEdge> innerEdges = cov.selectEdges(2);
     List<CoverageEdge> outerEdges = cov.selectEdges(1);
-    MultiLineString constraint = createLines(outerEdges);
+    MultiLineString constraint = geomFactory.createMultiLineString(
+        outerEdges.stream()
+            .map(e -> geomFactory.createLineString(e.getCoordinates()))
+            .toArray(LineString[]::new));
 
     simplifyEdges(innerEdges, constraint, tolerance);
     Geometry[] result = cov.buildCoverage();
@@ -116,11 +119,19 @@ public class CoverageSimplifier {
   }
 
   private void simplifyEdges(List<CoverageEdge> edges, MultiLineString constraints, double tolerance) {
-    MultiLineString lines = createLines(edges);
-    MultiLineString linesSimp = TPVWSimplifier.simplify(lines, constraints, tolerance);
+    List<CoverageEdge> lineEdges = edges.stream().filter(e->!e.isConstraintFree()).collect(Collectors.toList());
+    List<CoverageEdge> freeRingEdges = edges.stream().filter(CoverageEdge::isConstraintFree).collect(Collectors.toList());
+    MultiLineString lines = createLines(lineEdges);
+    MultiLineString freeRings = createLines(freeRingEdges);
+    MultiLineString linesSimp =
+        TPVWSimplifier.simplify(lines, constraints, tolerance, false);
+    MultiLineString freeRingsSimp =
+        TPVWSimplifier.simplify(freeRings, constraints, tolerance, true);
+
     //Assert: mlsSimp.getNumGeometries = edges.length
     
-    setCoordinates(edges, linesSimp);
+    setCoordinates(lineEdges, linesSimp);
+    setCoordinates(freeRingEdges, freeRingsSimp);
   }
 
   private void setCoordinates(List<CoverageEdge> edges, MultiLineString lines) {
@@ -130,16 +141,12 @@ public class CoverageSimplifier {
   }
 
   private MultiLineString createLines(List<CoverageEdge> edges) {
-    LineString lines[] = new LineString[edges.size()];
-    BitSet freeRings = new BitSet(edges.size());
+    LineString[] lines = new LineString[edges.size()];
     for (int i = 0; i < edges.size(); i++) {
       CoverageEdge edge = edges.get(i);
       lines[i] = geomFactory.createLineString(edge.getCoordinates());
-      freeRings.set(i, edge.isConstraintFree());
     }
-    MultiLineString mls = geomFactory.createMultiLineString(lines);
-    mls.setUserData(freeRings);
-    return mls;
+    return geomFactory.createMultiLineString(lines);
   }
   
 }

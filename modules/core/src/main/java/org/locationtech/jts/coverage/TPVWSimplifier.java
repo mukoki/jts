@@ -65,20 +65,28 @@ class TPVWSimplifier {
    * @return the simplified lines
    */
   public static MultiLineString simplify(MultiLineString lines, 
-      MultiLineString constraints, double distanceTolerance) {
-    TPVWSimplifier simp = new TPVWSimplifier(lines, distanceTolerance);
+      MultiLineString constraints, double distanceTolerance, boolean freeRings) {
+    TPVWSimplifier simp = new TPVWSimplifier(lines, distanceTolerance, freeRings);
     simp.setConstraints(constraints);
     MultiLineString result = (MultiLineString) simp.simplify();
     return result;
   }
  
   private MultiLineString input;
+  private boolean freeRings = false;
   private double areaTolerance;
   private GeometryFactory geomFactory;
   private MultiLineString constraints = null;
 
   private TPVWSimplifier(MultiLineString lines, double distanceTolerance) {
     this.input = lines;
+    this.areaTolerance = distanceTolerance * distanceTolerance;
+    geomFactory = input.getFactory();
+  }
+
+  private TPVWSimplifier(MultiLineString lines, double distanceTolerance, boolean freeRings) {
+    this.input = lines;
+    this.freeRings = freeRings;
     this.areaTolerance = distanceTolerance * distanceTolerance;
     geomFactory = input.getFactory();
   }
@@ -105,14 +113,12 @@ class TPVWSimplifier {
   }
 
   private List<Edge> createEdges(MultiLineString lines) {
-    List<Edge> edges = new ArrayList<Edge>();
+    List<Edge> edges = new ArrayList<>();
     if (lines == null)
       return edges;
-    BitSet freeRings = (lines.getUserData() != null && lines.getUserData() instanceof BitSet) ?
-        (BitSet)lines.getUserData() : new BitSet(lines.getNumGeometries());
     for (int i = 0 ; i < lines.getNumGeometries(); i++) {
       LineString line = (LineString) lines.getGeometryN(i);
-      edges.add(new Edge(line, freeRings.get(i), areaTolerance));
+      edges.add(new Edge(line, freeRings, areaTolerance));
     }
     return edges;
   }
