@@ -285,9 +285,8 @@ public class TestCasePanel extends JPanel {
  
     JCheckBox cbDisplayAB = new JCheckBox();
     cbDisplayAB.setSelected(true);
-    cbDisplayAB.setToolTipText("Dislplay A and B");
-    //cbDisplayAB.setText("Display Input");
-    cbDisplayAB.addActionListener(new java.awt.event.ActionListener() {
+    cbDisplayAB.setToolTipText("Display A and B");
+     cbDisplayAB.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(ActionEvent e) {
           JTSTestBuilderController.editPanel().setShowingInput(cbDisplayAB.isSelected());
         }
@@ -295,6 +294,17 @@ public class TestCasePanel extends JPanel {
     JLabel lblDisplayAB = new JLabel();
     lblDisplayAB.setIcon(AppIcons.GEOFUNC_BINARY);
     
+    JCheckBox cbDisplayGrid = new JCheckBox();
+    cbDisplayGrid.setSelected(true);
+    cbDisplayGrid.setToolTipText("Display Grid");
+    cbDisplayGrid.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+          JTSTestBuilderController.editPanel().setShowingGrid(cbDisplayGrid.isSelected());
+        }
+      });
+    JLabel lblDisplayGrid = new JLabel();
+    lblDisplayGrid.setIcon(AppIcons.EDIT_GRID);
+
     cbRevealTopo.setToolTipText("Reveal Topology - visualize topological detail by stretching geometries");
     spStretchDist.setToolTipText("Stretch Distance (pixels)");
     spStretchDist.setMaximumSize(new Dimension(20,20));
@@ -306,6 +316,8 @@ public class TestCasePanel extends JPanel {
     jPanelReveal.add(Box.createHorizontalStrut(8));
     jPanelReveal.add(cbDisplayAB);
     jPanelReveal.add(lblDisplayAB);
+    jPanelReveal.add(cbDisplayGrid);
+    jPanelReveal.add(lblDisplayGrid);
     jPanelReveal.add(Box.createHorizontalGlue());
     jPanelReveal.setBorder(BorderFactory.createLoweredBevelBorder());
 
