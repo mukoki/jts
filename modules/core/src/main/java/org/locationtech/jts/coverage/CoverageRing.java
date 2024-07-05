@@ -17,6 +17,7 @@ import java.util.List;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateArrays;
+import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
@@ -42,12 +43,20 @@ class CoverageRing extends BasicSegmentString {
   }
 
   private static void createRings(Polygon poly, List<CoverageRing> rings) {
-    rings.add( createRing(poly.getExteriorRing(), true));
+    if (poly.isEmpty())
+      return;
+    addRing(poly.getExteriorRing(), true, rings);
     for (int i = 0; i < poly.getNumInteriorRing(); i++) {
-      rings.add( createRing(poly.getInteriorRingN(i), false));
+      addRing( poly.getInteriorRingN(i), false, rings);
     }
   }
 
+  private static void addRing(LinearRing ring, boolean isShell, List<CoverageRing> rings) {
+    if (ring.isEmpty())
+      return;
+    rings.add( createRing(ring, isShell));
+  }
+  
   private static CoverageRing createRing(LinearRing ring, boolean isShell) {
     Coordinate[] pts = ring.getCoordinates();
     if (CoordinateArrays.hasRepeatedOrInvalidPoints(pts)) {
@@ -82,6 +91,14 @@ class CoverageRing extends BasicSegmentString {
     this.isInteriorOnRight = isInteriorOnRight;
     isInvalid = new boolean[size() - 1];
     isMatched = new boolean[size() - 1];
+  }
+  
+  public Envelope getEnvelope(int start, int end) {
+    Envelope env = new Envelope();
+    for (int i = start; i < end; i++) {
+      env.expandToInclude(getCoordinate(i));
+    }
+    return env;
   }
   
   /**

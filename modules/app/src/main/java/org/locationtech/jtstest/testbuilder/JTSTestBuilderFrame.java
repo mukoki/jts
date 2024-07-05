@@ -58,6 +58,7 @@ public class JTSTestBuilderFrame extends JFrame
     
   private static JTSTestBuilderFrame singleton = null;
   static boolean isShowingIndicators = true;
+  static boolean isSavingIndicators = false;
   
   TestBuilderModel tbModel;
 
@@ -79,7 +80,6 @@ public class JTSTestBuilderFrame extends JFrame
   CommandPanel commandPanel = new CommandPanel();
   InspectorPanel inspectPanel = new InspectorPanel();
   TestListPanel testListPanel = new TestListPanel(this);
-  //LayerListPanel layerListPanel = new LayerListPanel();
   LayerListPanel layerListPanel = new LayerListPanel();
   GridBagLayout gridBagLayout2 = new GridBagLayout();
   GridLayout gridLayout1 = new GridLayout();
@@ -166,7 +166,9 @@ public class JTSTestBuilderFrame extends JFrame
   public static boolean isShowingIndicators() {
     return isRunning() && isShowingIndicators;
   }
-  
+  public static boolean isSavingIndicators() {
+    return isRunning() && isSavingIndicators;
+  }
   public static GeometryEditPanel getGeometryEditPanel()
   {
     return instance().getTestCasePanel().getGeometryEditPanel();
@@ -337,6 +339,11 @@ public class JTSTestBuilderFrame extends JFrame
     inspectGeometry(geometry, geomIndex, tag, true);
   }
 
+  public void inspectGeometry(String tag, Geometry geometry) {
+    inspectPanel.setGeometry( tag, geometry, 0, false);
+    showTab(AppStrings.TAB_LABEL_INSPECT);
+  }
+
   private void inspectGeometry(Geometry geometry, int geomIndex, String tag, boolean isEditable) {
     inspectPanel.setGeometry( tag, geometry, geomIndex, isEditable);
     showTab(AppStrings.TAB_LABEL_INSPECT);
@@ -459,10 +466,6 @@ public class JTSTestBuilderFrame extends JFrame
     jSplitPane1.add(panelTop, JSplitPane.TOP);
     jSplitPane1.add(panelBottom, JSplitPane.BOTTOM);
     
-    /*
-    border4 = BorderFactory.createBevelBorder(BevelBorder.LOWERED, Color.white,
-        Color.white, new Color(93, 93, 93), new Color(134, 134, 134));
-        */
     contentPane = (JPanel) this.getContentPane();
     contentPane.setLayout(contentLayout);
     contentPane.setPreferredSize(new Dimension(601, 690));
@@ -511,6 +514,10 @@ public class JTSTestBuilderFrame extends JFrame
 
   public void updateLayerList() {
     layerListPanel.updateList();
+  }
+  
+  public void refreshLayerList() {
+    layerListPanel.populateList();
   }
   
   private void reportProblemsParsingXmlTestFile(List parsingProblems) {

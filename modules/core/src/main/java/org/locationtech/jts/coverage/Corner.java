@@ -9,27 +9,28 @@
  *
  * http://www.eclipse.org/org/documents/edl-v10.php.
  */
-package org.locationtech.jts.simplify;
+package org.locationtech.jts.coverage;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Triangle;
+import org.locationtech.jts.simplify.LinkedLine;
 
-public class Corner implements Comparable<Corner> {
+class Corner implements Comparable<Corner> {
   private LinkedLine edge;
   private int index;
   private int prev;
   private int next;
   private double area;
 
-  public Corner(LinkedLine edge, int i) {
+  public Corner(LinkedLine edge, int i, double area) {
     this.edge = edge;
     this.index = i; 
     this.prev = edge.prev(i);
     this.next = edge.next(i);
-    this.area = area(edge, i);
+    this.area = area;
   }
 
   public boolean isVertex(int index) {
@@ -40,6 +41,10 @@ public class Corner implements Comparable<Corner> {
 
   public int getIndex() {
     return index;
+  }
+  
+  public Coordinate getCoordinate() {
+    return edge.getCoordinate(index);
   }
   
   public double getArea() {
@@ -53,20 +58,19 @@ public class Corner implements Comparable<Corner> {
   public Coordinate next() {
     return edge.getCoordinate(next);  
   }
-  
-  private static double area(LinkedLine edge, int index) {
-    Coordinate pp = edge.prevCoordinate(index);
-    Coordinate p = edge.getCoordinate(index);
-    Coordinate pn = edge.nextCoordinate(index);
-    return Triangle.area(pp, p, pn);
-  }
 
   /**
-   * Orders corners by increasing area
+   * Orders corners by increasing area.
+   * To ensure equal-area corners have a deterministic ordering,
+   * if area is equal then compares corner index.
    */
   @Override
   public int compareTo(Corner o) {
-    return Double.compare(area, o.area);
+    int comp = Double.compare(area, o.area);
+    if (comp != 0) 
+      return comp;
+    //-- ensure equal-area corners have a deterministic ordering
+    return Integer.compare(index, o.index);
   }
   
   public Envelope envelope() {

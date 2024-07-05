@@ -24,6 +24,7 @@ import org.locationtech.jts.geom.LineSegment;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.MultiLineString;
+import org.locationtech.jts.geom.MultiPoint;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.util.GeometryMapper;
@@ -38,6 +39,7 @@ import org.locationtech.jts.util.Assert;
  * If the offset distance is positive the curve lies on the left side of the input;
  * if it is negative the curve is on the right side.
  * The curve(s) have the same direction as the input line(s).
+ * The result for a zero offset distance is a copy of the input linework.
  * <p>
  * The offset curve is based on the boundary of the buffer for the geometry
  * at the offset distance (see {@link BufferOp}.
@@ -75,6 +77,12 @@ public class OffsetCurve {
    * The nearness tolerance for matching the the raw offset linework and the buffer curve.
    */
   private static final int MATCH_DISTANCE_FACTOR = 10000;
+  
+  /**
+   * A QuadSegs minimum value that will prevent generating
+   * unwanted offset curve artifacts near end caps.
+   */
+  private static final int MIN_QUADRANT_SEGMENTS = 8;
 
   /**
    * Computes the offset curve of a geometry at a given distance.
@@ -163,7 +171,15 @@ public class OffsetCurve {
     //-- make new buffer params since the end cap style must be the default
     this.bufferParams = new BufferParameters();
     if (bufParams != null) {
-      bufferParams.setQuadrantSegments(bufParams.getQuadrantSegments());
+      /**
+       * Prevent using a very small QuadSegs value, to avoid 
+       * offset curve artifacts near the end caps. 
+       */
+      int quadSegs = bufParams.getQuadrantSegments();
+      if (quadSegs < MIN_QUADRANT_SEGMENTS) {
+        quadSegs = MIN_QUADRANT_SEGMENTS;
+      }
+      bufferParams.setQuadrantSegments(quadSegs);
       bufferParams.setJoinStyle(bufParams.getJoinStyle());
       bufferParams.setMitreLimit(bufParams.getMitreLimit());
     }
@@ -226,7 +242,7 @@ public class OffsetCurve {
    * @param bufParams the buffer parameters to use
    * @return the raw offset curve points
    */
-  public static Coordinate[] rawOffsetCurve(LineString line, double distance, BufferParameters bufParams)
+  public static Coordinate[] rawOffset(LineString line, double distance, BufferParameters bufParams)
   {
     Coordinate[] pts = line.getCoordinates();
     Coordinate[] cleanPts = CoordinateArrays.removeRepeatedOrInvalidPoints(pts);
@@ -247,7 +263,7 @@ public class OffsetCurve {
    */
   public static Coordinate[] rawOffset(LineString line, double distance)
   {
-    return rawOffsetCurve(line, distance, new BufferParameters());
+    return rawOffset(line, distance, new BufferParameters());
   }
 
   private Geometry computeCurve(LineString lineGeom, double distance) {
@@ -255,6 +271,10 @@ public class OffsetCurve {
     //-- empty or single-point line
     if (lineGeom.getNumPoints() < 2 || lineGeom.getLength() == 0.0) {
       return geomFactory.createLineString();
+    }
+    //-- zero offset distance
+    if (distance == 0) {
+      return lineGeom.copy();
     }
     //-- two-point line
     if (lineGeom.getNumPoints() == 2) {
@@ -274,7 +294,7 @@ public class OffsetCurve {
   }
 
   private List<OffsetCurveSection> computeSections(LineString lineGeom, double distance) {
-    Coordinate[] rawCurve = rawOffsetCurve(lineGeom, distance, bufferParams);
+    Coordinate[] rawCurve = rawOffset(lineGeom, distance, bufferParams);
     List<OffsetCurveSection> sections = new ArrayList<OffsetCurveSection>();
     if (rawCurve.length == 0) {
       return sections;
@@ -402,8 +422,9 @@ public class OffsetCurve {
   private static class MatchCurveSegmentAction 
     extends MonotoneChainSelectAction
   {
-    private Coordinate p0;
-    private Coordinate p1;
+    private Coordinate raw0;
+    private Coordinate raw1;
+    private double rawLen;
     private int rawCurveIndex;
     private Coordinate[] bufferRingPts;
     private double matchDistance;
@@ -411,11 +432,12 @@ public class OffsetCurve {
     private double minRawLocation = -1;
     private int bufferRingMinIndex = -1;
     
-    public MatchCurveSegmentAction(Coordinate p0, Coordinate p1, 
+    public MatchCurveSegmentAction(Coordinate raw0, Coordinate raw1, 
         int rawCurveIndex,
         double matchDistance, Coordinate[] bufferRingPts, double[] rawCurveLoc) {
-      this.p0 = p0;
-      this.p1 = p1;
+      this.raw0 = raw0;
+      this.raw1 = raw1;
+      rawLen = raw0.distance(raw1);
       this.rawCurveIndex = rawCurveIndex;
       this.bufferRingPts = bufferRingPts;
       this.matchDistance = matchDistance;
@@ -429,34 +451,61 @@ public class OffsetCurve {
     public void select(MonotoneChain mc, int segIndex)
     {
       /**
-       * A curveRingPt segment may match all or only a portion of a single raw segment.
-       * There may be multiple curve ring segs that match along the raw segment.
+       * Generally buffer segments are no longer than raw curve segments, 
+       * since the final buffer line likely has node points added.
+       * So a buffer segment may match all or only a portion of a single raw segment.
+       * There may be multiple buffer ring segs that match along the raw segment.
+       * 
+       * HOWEVER, in some cases the buffer construction may contain 
+       * a matching buffer segment which is slightly longer than a raw curve segment.
+       * Specifically, at the endpoint of a closed line with nearly parallel end segments
+       * - the closing fillet line is very short so is heuristically removed in the buffer.
+       * In this case, the buffer segment must still be matched.
+       * This produces closed offset curves, which is technically
+       * an anomaly, but only happens in rare cases.
        */
       double frac = segmentMatchFrac(bufferRingPts[segIndex], bufferRingPts[segIndex+1], 
-          p0, p1, matchDistance);
+          raw0, raw1, matchDistance);
       //-- no match
       if (frac < 0) return;
       
       //-- location is used to sort segments along raw curve
       double location = rawCurveIndex + frac;
       rawCurveLoc[segIndex] = location;
-      //-- record lowest index
+      //-- buffer seg index at lowest raw location is the curve start
       if (minRawLocation < 0 || location < minRawLocation) {
         minRawLocation = location;
         bufferRingMinIndex = segIndex;
       }    
     }
+  
+    private double segmentMatchFrac(Coordinate buf0, Coordinate buf1, 
+        Coordinate raw0, Coordinate raw1, double matchDistance) {
+      if (! isMatch(buf0, buf1, raw0, raw1, matchDistance))
+      return -1;
+      
+      //-- matched - determine location as fraction along raw segment
+      LineSegment seg = new LineSegment(raw0, raw1);
+      return seg.segmentFraction(buf0);
   }
   
-  private static double segmentMatchFrac(Coordinate p0, Coordinate p1, 
-      Coordinate seg0, Coordinate seg1, double matchDistance) {
-    if (matchDistance < Distance.pointToSegment(p0, seg0, seg1))
-      return -1;
-    if (matchDistance < Distance.pointToSegment(p1, seg0, seg1))
-      return -1;
-    //-- matched - determine position as fraction along segment
-    LineSegment seg = new LineSegment(seg0, seg1);
-    return seg.segmentFraction(p0);
+    private boolean isMatch(Coordinate buf0, Coordinate buf1, Coordinate raw0, Coordinate raw1, double matchDistance) {
+      double bufSegLen = buf0.distance(buf1);
+      if (rawLen <= bufSegLen) {
+        if (matchDistance < Distance.pointToSegment(raw0, buf0, buf1))
+          return false;
+        if (matchDistance < Distance.pointToSegment(raw1, buf0, buf1))
+          return false;
+      }
+      else {
+        //TODO: only match longer buf segs at raw curve end segs?
+        if (matchDistance < Distance.pointToSegment(buf0, raw0, raw1))
+          return false;
+        if (matchDistance < Distance.pointToSegment(buf1, raw0, raw1))
+          return false;      
+      }
+      return true;
+    }  
   }
 
   /**

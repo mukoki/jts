@@ -30,29 +30,61 @@ Distributions for older JTS versions can be obtained at the
 * Add `Geometry.hasDimension(int dim)` method {#944}
 * Add `ConcaveHull.alphaShape` function (#952)
 * Add `OffsetCurve` Joined mode (#956)
+* Add `PointLocation.isOnSegment` function (#1048)
+* Addd `RelateNG` API for improved topological relationship functionality and performance (#1052, #1055)
 
 ### Functionality Improvements
 * Improve `TopologyPreservingSimplifier` to prevent edge-disjoint line collapse (#925)
 * Improve `OffsetCurve` to return more linework for some input situations (#956)
 * Reduce buffer curve short fillet segments (#960)
+* Added ability to specify boundary for `LargestEmptyCircle` (#973)
+* Improve `DouglaPeuckerSimplifier` and `TopologyPreservingSimplifier` to handle ring endpoints (#1013)
+* Add `Angle` functions `sinSnap` and `cosSnap` to avoid small errors, e.g. with buffer operations (#1016)
+* Improve Buffer input simplification for rings (#1022)
+* Improve CoverageSimplifier with ring removal, smoothing, inner/outer and per-feature tolerances (#1060)
 
 ### Bug Fixes
 * Fix `PreparedGeometry` handling of EMPTY elements (#904)
 * Fix `WKBReader` parsing of WKB containing multiple empty elements (#905)
-* Fix `LineSegment.orientationIndex(LineSegment)` to correct orientation for non-collinear segments on right (#914) 
+* Fix `LineSegment.orientationIndex(LineSegment)` to correct orientation for non-collinear segments on right (#914)
 * Fix `DepthSegment` compareTo method (#920)
 * Ensure `GeometryFixer` does not change coordinate dimension (#922)
 * Improve `ConvexHull` radial sort robustness (#927)
 * Improve robustness of Delaunay Triangulation frame size heuristic (#931)
 * Fix `PreparedLineString.intersects` to handle mixed GCs correctly (#944)
 * Fix `QuadEdgeSubdivision.TriangleEdgesListVisitor` (#945)
-* Fix `PolygonHoleJoiner` to handle all valid inputs 
+* Fix `PolygonHoleJoiner` to handle all valid inputs
   (allows `PolygonTriangulator`, `ConstrainedDelaunayTriangulator`, and `ConcaveHullOfPolygons` to work correctly) (#946)
 * Fix `OffsetCurve` handling of input with repeated points (#956)
+* Fix `OffsetCurve` handling zero offset distance (#971)
+* Fix `MaximumInscribedCircle` and `LargestEmptyCircle` to avoid long looping for thin inputs (#978)
+* Fix `OffsetCurve` to use a minimum QuadrantSegs value (#981)
+* Fix `HilbertEncoder` Y extent handling
+* Fix `Geometry.getCoordinate` to return non-null coordinate for collections with empty first element (#987)
+* Fix `LargestEmptyCircle` to handle polygonal obstacles (#988)
+* Make intersection computation more robust (#989)
+* Fix `VariableBuffer` to handle zero vertex buffer distances correctly (#997)
+* Fix `IncrementalDelaunayTriangulator` to ensure triangulation boundary is convex (#1004)
+* Fix OverlayNG Area Check heuristic for difference (#1005)
+* Fix `InteriorPointPoint` to handle empty elements
+* Fix `DistanceOp` for empty elements (#1010)
+* Fix predicates for MultiPoint with EMPTY (#1015)
+* Fix `InteriorPoint` for MultiLineString with EMPTY (#1023)
+* Fix TopologyPreservingSimplifier to prevent incorrect topology from jumping components (#1024)
+* Fix OffsetCurve to ensure end segments are included (#1029)
+* Fix `PointLocator` to respect `BoundaryNodeRule` for single lines (#1031)
+* Fix `BufferOp` Inverted Ring Removal check (#1038)
+* Improve `VariableBuffer` segment buffer cap generation (#1041)
+* Fix `TopologyPreservingSimplifier` ring endpoint removal indexing (#1059)
 
 ### Performance Improvements
 
 * Improve `Polygonizer` performance in some cases with many islands (#906)
+* Improve Convex Hull performance by avoiding duplicate uniquing (#985)
+* Improve `HPRtree` performance (#1012)
+* Improve performance of noding and overlay via `HPRtree` (#1012) 
+* Improve `DistanceOp` performance for Point-Point (#1049)
+* Improve `CoveragePolygonValidator` via section performance optimization (#1053)
 
 # Version 1.19
 
@@ -68,6 +100,7 @@ Distributions for older JTS versions can be obtained at the
 * Add `ConcaveHullOfPolygons` class (#870)
 * Add `PolygonHullSimplifier` class (#861, #880)
 * TWKB read and write implementation (#854)
+* Add `CubicBezierCurve` class
 
 ### Functionality Improvements
 
@@ -85,7 +118,7 @@ Distributions for older JTS versions can be obtained at the
 
 ### Performance Improvements
 
-* Improve performance of `CoveageUnion` by using boundary chains (#891)
+* Improve performance of `CoverageUnion` by using boundary chains (#891)
 
 ### Bug Fixes
 
