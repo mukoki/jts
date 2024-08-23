@@ -62,12 +62,29 @@ public class RelateNGBoundaryNodeRuleTest
     String a = "MULTILINESTRING ((0 0, 10 10), (10 10, 20 20))";
     String b = "LINESTRING (10 10, 20 0)";
 
-    // under Mod2, A has no boundary - A.int / B.bdy = 0
-//    runRelateTest(a, b,  BoundaryNodeRule.OGC_SFS_BOUNDARY_RULE,   "F01FFF102"    );
+    // under Mod2, A touch point is not boundary - A.int / B.bdy = 0
+    runRelate(a, b,  BoundaryNodeRule.OGC_SFS_BOUNDARY_RULE,   "F01FF0102"    );
     // under EndPoint, A has a boundary node - A.bdy / B.bdy = 0
     runRelate(a, b,  BoundaryNodeRule.ENDPOINT_BOUNDARY_RULE,  "FF1F00102"    );
-    // under MultiValent, A has a boundary node but B does not - A.bdy / B.bdy = F and A.int
-//    runRelateTest(a, b,  BoundaryNodeRule.MULTIVALENT_ENDPOINT_BOUNDARY_RULE,  "0F1FFF1F2"    );
+    // under MonoValent, A touch point is not boundary - A.bdy / B.bdy = F and A.int / B.bdy = 0
+    runRelate(a, b,  BoundaryNodeRule.MONOVALENT_ENDPOINT_BOUNDARY_RULE,  "F01FF0102"    );
+    // under MultiValent, A has a boundary node but B does not - A.bdy / B.bdy = F and A.bdy / B.int = 0
+    runRelate(a, b,  BoundaryNodeRule.MULTIVALENT_ENDPOINT_BOUNDARY_RULE,  "FF10FF1F2"    );
+  }
+
+  public void testMultiLineStringClosedTouchAtEndpoint()
+  {
+    String a = "MULTILINESTRING ((0 0, 10 10), (10 10, 0 20, 0 0))";
+    String b = "LINESTRING (10 10, 20 0)";
+
+    // under Mod2, A has no boundary - A.int / B.bdy = 0
+    runRelate(a, b,  BoundaryNodeRule.OGC_SFS_BOUNDARY_RULE,   "F01FFF102"    );
+    // under EndPoint, A endpoints are in boundary - A.bdy / B.bdy = 0
+    runRelate(a, b,  BoundaryNodeRule.ENDPOINT_BOUNDARY_RULE,  "FF1F00102"    );
+    // under MonoValent, A touch point is not boundary - A.bdy / B.bdy = F and A.int / B.bdy = 0
+    runRelate(a, b,  BoundaryNodeRule.MONOVALENT_ENDPOINT_BOUNDARY_RULE,  "F01FFF102"    );
+    // under MultiValent, A has a boundary node but B does not - A.bdy / B.bdy = F and A.bdy / B.int = 0
+    runRelate(a, b,  BoundaryNodeRule.MULTIVALENT_ENDPOINT_BOUNDARY_RULE,  "FF10F01F2"    );
   }
 
   public void testLineRingTouchAtEndpoints()
@@ -79,7 +96,9 @@ public class RelateNGBoundaryNodeRuleTest
     runRelate(a, b,  BoundaryNodeRule.OGC_SFS_BOUNDARY_RULE,   "F01FFF102"    );
     // under EndPoint, A has a boundary node - A.bdy / B.bdy = 0
     runRelate(a, b,  BoundaryNodeRule.ENDPOINT_BOUNDARY_RULE,  "FF1F0F102"    );
-    // under MultiValent, A has a boundary node but B does not - A.bdy / B.bdy = F and A.int
+    // under MonoValent, A has no boundary node but B does - A.bdy / B.bdy = F and A.int / B.bdy = 0
+    runRelate(a, b,  BoundaryNodeRule.MONOVALENT_ENDPOINT_BOUNDARY_RULE,  "F01FFF102"    );
+    // under MultiValent, A has a boundary node but B does not - A.bdy / B.bdy = F and A.bdy / B.int = 0
     runRelate(a, b,  BoundaryNodeRule.MULTIVALENT_ENDPOINT_BOUNDARY_RULE,  "FF10FF1F2"    );
   }
 
@@ -107,6 +126,30 @@ public class RelateNGBoundaryNodeRuleTest
   }
 
   public void testPolygonEmptyMultiLineStringClosed()
+  {
+    String a = "POLYGON EMPTY";
+    String b = "MULTILINESTRING ((0 0, 0 1), (0 1, 1 1, 1 0, 0 0))";
+
+    // closed line has no boundary under SFS rule
+    runRelate(a, b,  BoundaryNodeRule.OGC_SFS_BOUNDARY_RULE,   "FFFFFF1F2"    );
+    
+    // closed line has boundary under ENDPOINT rule
+    runRelate(a, b,  BoundaryNodeRule.ENDPOINT_BOUNDARY_RULE,  "FFFFFF102"    );
+  }
+
+  public void testPolygonEqualRotated()
+  {
+    String a = "POLYGON ((0 0, 140 0, 140 140, 0 140, 0 0))";
+    String b = "POLYGON ((140 0, 0 0, 0 140, 140 140, 140 0))";
+
+    // BNR only considers linear endpoints, so results are equal for all rules
+    runRelate(a, b,  BoundaryNodeRule.OGC_SFS_BOUNDARY_RULE,   "2FFF1FFF2"    );
+    runRelate(a, b,  BoundaryNodeRule.ENDPOINT_BOUNDARY_RULE,  "2FFF1FFF2"    );
+    runRelate(a, b,  BoundaryNodeRule.MONOVALENT_ENDPOINT_BOUNDARY_RULE,  "2FFF1FFF2"    );
+    runRelate(a, b,  BoundaryNodeRule.MULTIVALENT_ENDPOINT_BOUNDARY_RULE,  "2FFF1FFF2"    );  
+  }
+  
+  public void testLineStringInteriorTouchMultivalent()
   {
     String a = "POLYGON EMPTY";
     String b = "MULTILINESTRING ((0 0, 0 1), (0 1, 1 1, 1 0, 0 0))";

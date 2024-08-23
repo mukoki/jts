@@ -117,23 +117,24 @@ class TopologyComputer {
   /**
    * Indicates whether the input geometries require self-noding 
    * for correct evaluation of specific spatial predicates. 
-   * Self-noding is required for geometries which may self-cross
-   * - i.e. lines, and overlapping polygons in GeometryCollections.
-   * Self-noding is not required for polygonal geometries.
-   * This ensures that the locations of nodes created by 
-   * crossing segments are computed explicitly.
+   * Self-noding is required for geometries which may 
+   * have self-crossing linework.
+   * This causes the coordinates of nodes created by 
+   * crossing segments to be computed explicitly.
    * This ensures that node locations match in situations
    * where a self-crossing and mutual crossing occur at the same logical location.
-   * E.g. a self-crossing line tested against a single segment 
+   * The canonical example is a self-crossing line tested against a single segment 
    * identical to one of the crossed segments.
    * 
    * @return true if self-noding is required
    */
   public boolean isSelfNodingRequired() {
-    //TODO: change to testing for lines or GC with > 1 polygon
-    if (geomA.isPointsOrPolygons()) return false;
-    if (geomB.isPointsOrPolygons()) return false;
-    return predicate.requireSelfNoding();
+    if (predicate.requireSelfNoding()) {
+      if (geomA.isSelfNodingRequired()
+          || geomB.isSelfNodingRequired()) 
+        return true;
+    }
+    return false;
   }
   
   public boolean isExteriorCheckRequired(boolean isA) {
@@ -141,6 +142,7 @@ class TopologyComputer {
   }
   
   private void updateDim(int locA, int locB, int dimension) {
+    //System.out.println(Location.toLocationSymbol(locA) + "/" + Location.toLocationSymbol(locB) + ": " + dimension);
     predicate.updateDimension(locA, locB, dimension);
   }
   
@@ -271,10 +273,25 @@ class TopologyComputer {
     throw new IllegalStateException("Unknown target dimension: " + dimTarget);
   }
   
+  /**
+   * Add topology for a line end.
+   * The line end point must be "significant";
+   * i.e. not contained in an area if the source is a mixed-dimension GC.
+   * 
+   * @param isLineA the input containing the line end
+   * @param locLineEnd the location of the line end (Interior or Boundary)
+   * @param locTarget the location on the target geometry
+   * @param dimTarget the dimension of the interacting target geometry element,
+   *    (if any), or the dimension of the target
+   * @param pt the line end coordinate
+   */
   public void addLineEndOnGeometry(boolean isLineA, int locLineEnd, int locTarget, int dimTarget, Coordinate pt) {
+    //-- record topology at line end point
+    updateDim(isLineA, locLineEnd, locTarget, Dimension.P);
+    
+    //-- Line and Area targets may have additional topology
     switch (dimTarget) {
     case Dimension.P:
-      addLineEndOnPoint(isLineA, locLineEnd, locTarget, pt);
       return;
     case Dimension.L:
       addLineEndOnLine(isLineA, locLineEnd, locTarget, pt);
@@ -285,32 +302,30 @@ class TopologyComputer {
     }
     throw new IllegalStateException("Unknown target dimension: " + dimTarget);
   }
-  
-  private void addLineEndOnPoint(boolean isLineA, int locLineEnd, int locPoint, Coordinate pt) {
-    updateDim(isLineA, locLineEnd, locPoint, Dimension.P);
-  }
 
   private void addLineEndOnLine(boolean isLineA, int locLineEnd, int locLine, Coordinate pt) {
-    updateDim(isLineA, locLineEnd, locLine, Dimension.P);
     /**
-     * When a line end is in the exterior, some length of the line interior
-     * must also be in the exterior. 
+     * When a line end is in the EXTERIOR of a Line, 
+     * some length of the source Line INTERIOR
+     * is also in the target Line EXTERIOR. 
      * This works for zero-length lines as well. 
      */
-    
     if (locLine == Location.EXTERIOR) {
       updateDim(isLineA, Location.INTERIOR, Location.EXTERIOR, Dimension.L);      
     }
-  }
+  }  
   
   private void addLineEndOnArea(boolean isLineA, int locLineEnd, int locArea, Coordinate pt) {
-    if (locArea == Location.BOUNDARY) {
-      updateDim(isLineA, locLineEnd, locArea, Dimension.P);
-    }
-    else {
+    if (locArea != Location.BOUNDARY) {
+      /**
+       * When a line end is in an Area INTERIOR or EXTERIOR 
+       * some length of the source Line Interior  
+       * AND the Exterior of the line
+       * is also in that location of the target.
+       * NOTE: this assumes the line end is NOT also in an Area of a mixed-dim GC
+       */
       //TODO: handle zero-length lines?
       updateDim(isLineA, Location.INTERIOR, locArea, Dimension.L);
-      updateDim(isLineA, locLineEnd, locArea, Dimension.P);
       updateDim(isLineA, Location.EXTERIOR, locArea, Dimension.A);     
     }
   }

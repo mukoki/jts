@@ -48,6 +48,9 @@ import org.locationtech.jts.geom.Polygon;
  * of the collection geometry.
  * </ol>
  * Prepared mode is supported via cached spatial indexes.
+ * <p>
+ * Supports specifying the {@link BoundaryNodeRule} to use
+ * for line endpoints.
  * 
  * @author Martin Davis
  *
@@ -142,14 +145,34 @@ class RelatePointLocator {
   public int locate(Coordinate p) {
     return DimensionLocation.location(locateWithDim(p));
   }
-
-  public int locateLineEnd(Coordinate p) {
-    return lineBoundary.isBoundary(p) ? Location.BOUNDARY : Location.INTERIOR;
+  
+  /**
+   * Locates a line endpoint, as a {@link DimensionLocation}.
+   * In a mixed-dim GC, the line end point may also lie in an area.
+   * In this case the area location is reported.
+   * Otherwise, the dimLoc is either LINE_BOUNDARY 
+   * or LINE_INTERIOR, depending on the endpoint valence
+   * and the BoundaryNodeRule in place.
+   * 
+   * @param p the line end point to locate
+   * @return the dimension and location of the line end point
+   */
+  public int locateLineEndWithDim(Coordinate p) {
+    //-- if a GC with areas, check for point on area
+    if (polygons != null) {
+      int locPoly = locateOnPolygons(p, false, null);
+      if (locPoly != Location.EXTERIOR)
+        return DimensionLocation.locationArea(locPoly);
+    }
+    //-- not in area, so return line end location
+    return lineBoundary.isBoundary(p) 
+        ? DimensionLocation.LINE_BOUNDARY 
+        : DimensionLocation.LINE_INTERIOR;
   }
   
   /**
    * Locates a point which is known to be a node of the geometry
-   * (i.e. a point or on an edge).
+   * (i.e. a vertex or on an edge).
    * 
    * @param p the node point to locate
    * @param parentPolygonal the polygon the point is a node of

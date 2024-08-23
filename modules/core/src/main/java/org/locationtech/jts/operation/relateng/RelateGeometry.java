@@ -75,11 +75,18 @@ class RelateGeometry {
     this.boundaryNodeRule = bnRule;
     //-- cache geometry metadata
     isGeomEmpty = geom.isEmpty();
-    isLineZeroLen = isZeroLength(geom);
     geomDim = input.getDimension();
     analyzeDimensions();
+    isLineZeroLen = isZeroLengthLine(geom);
   }
   
+  private boolean isZeroLengthLine(Geometry geom) {
+    // avoid expensive zero-length calculation if not linear
+    if (getDimension() != Dimension.L)
+      return false;
+    return isZeroLength(geom);
+  }
+
   private void analyzeDimensions() {
     if (isGeomEmpty) {
       return;
@@ -143,7 +150,7 @@ class RelateGeometry {
     if (line.getNumPoints() >= 2) {
       Coordinate p0 = line.getCoordinateN(0);
       for (int i = 0 ; i < line.getNumPoints(); i++) {
-        Coordinate pi = line.getCoordinateN(1);
+        Coordinate pi = line.getCoordinateN(i);
         //-- most non-zero-len lines will trigger this right away 
         if (! p0.equals2D(pi)) 
           return false;
@@ -152,7 +159,6 @@ class RelateGeometry {
     return true;
   }
 
-  
   public Geometry getGeometry() {
     return geom;
   }
@@ -207,11 +213,11 @@ class RelateGeometry {
     int loc = getLocator().locateNodeWithDim(nodePt, parentPolygonal);
     return loc == DimensionLocation.AREA_INTERIOR;  
   }
-  
-  public int locateLineEnd(Coordinate p) {
-    return getLocator().locateLineEnd(p);
-  }
 
+  public int locateLineEndWithDim(Coordinate p) {
+    return getLocator().locateLineEndWithDim(p);
+  }
+  
   /**
    * Locates a vertex of a polygon.
    * A vertex of a Polygon or MultiPolygon is on
@@ -239,11 +245,26 @@ class RelateGeometry {
     return loc;
   }
   
-  public boolean isPointsOrPolygons() {
-    return geom instanceof Point
+  /**
+   * Indicates whether the geometry requires self-noding 
+   * for correct evaluation of specific spatial predicates. 
+   * Self-noding is required for geometries which may self-cross
+   * - i.e. lines, and overlapping elements in GeometryCollections.
+   * Self-noding is not required for polygonal geometries,
+   * since they can only touch at vertices.
+   * 
+   * @return true if self-noding is required for this geometry
+   */
+  public boolean isSelfNodingRequired() {
+    if (geom instanceof Point
         || geom instanceof MultiPoint
         || geom instanceof Polygon
-        || geom instanceof MultiPolygon;
+        || geom instanceof MultiPolygon)
+        return false;
+    //-- a GC with a single polygon does not need noding
+    if (hasAreas && geom.getNumGeometries() == 1) 
+      return false;
+    return true;
   }
 
   /**
@@ -295,6 +316,8 @@ class RelateGeometry {
     //-- only return Points not covered by another element
     List<Point> ptList = new ArrayList<Point>();
     for (Point p : ptListAll) {
+      if (p.isEmpty())
+        continue;
       int locDim = locateWithDim(p.getCoordinate());
       if (DimensionLocation.dimension(locDim) == Dimension.P) {
         ptList.add(p);

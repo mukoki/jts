@@ -109,6 +109,19 @@ public class RelateNGTest extends RelateNGTestCase {
     checkEquals(a, b, true);
   }
   
+  // tests bug involving checking for non-zero-length lines
+  public void testNonZeroLengthLinePoint() {
+    String a = "LINESTRING (0 0, 0 0, 9 9)";
+    String b = "POINT (1 1)";
+    checkRelate(a, b, "0F1FF0FF2");
+    checkIntersectsDisjoint(a, b, true);
+    checkContainsWithin(a, b, true);
+    checkContainsWithin(b, a, false);
+    checkCoversCoveredBy(a, b, true);
+    checkCoversCoveredBy(b, a, false);
+    checkEquals(a, b, false);
+  }
+  
   public void testLinePointIntAndExt() {
     String a = "MULTIPOINT((60 60), (100 100))";
     String b = "LINESTRING(40 40, 80 80)";
@@ -584,6 +597,37 @@ public class RelateNGTest extends RelateNGTestCase {
     checkRelate(a, b, "212F01FF2");
   }
   
+  //================  Repeated Points  ==============
+
+  public void testEmptyEquals() {
+    String empties[] = {
+        "POINT EMPTY",
+        "LINESTRING EMPTY",
+        "POLYGON EMPTY",
+        "MULTIPOINT EMPTY",
+        "MULTILINESTRING EMPTY",
+        "MULTIPOLYGON EMPTY",
+        "GEOMETRYCOLLECTION EMPTY"
+    };
+    int nempty = 7;
+    for (int i = 0; i < nempty; i++) {
+      for (int j = 0; j < nempty; j++) {
+        String a = empties[i];
+        String b = empties[j];
+        checkRelate(a, b, "FFFFFFFF2");
+        //-- currently in JTS empty geometries do NOT test equal
+         checkEquals(a, b, false);
+      }
+    }  
+  }
   
+  //================  Prepared Relate  ==============
+  
+  public void testPreparedAA() {
+    String a = "POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))";
+    String b = "POLYGON((0.5 0.5, 1.5 0.5, 1.5 1.5, 0.5 1.5, 0.5 0.5))";
+    checkPrepared(a, b);
+  }
+
   
 }
