@@ -248,7 +248,7 @@ public class JTSTestBuilderToolBar {
         });
 
       extractComponentButton = createToggleButton(
-          AppStrings.TIP_EXTRACT_COMPONENTS,
+          AppStrings.TIP_EXTRACT_ELEMENTS,
           new ImageIcon(this.getClass().getResource("ExtractComponent.png")), 
           new java.awt.event.ActionListener() {
             public void actionPerformed(ActionEvent e)
@@ -257,8 +257,18 @@ public class JTSTestBuilderToolBar {
             }
           });
       
+      JToggleButton selectComponentButton = createToggleButton(
+          AppStrings.TIP_SELECT_ELEMENTS,
+          new ImageIcon(this.getClass().getResource("Select.png")), 
+          new java.awt.event.ActionListener() {
+            public void actionPerformed(ActionEvent e)
+            {
+              controller().modeSelectComponent();
+            }
+          });
+      
       deleteVertexButton = createToggleButton(
-          AppStrings.TIP_DELETE_VERTEX_COMPONENT,
+          AppStrings.TIP_DELETE_VERTEX_ELEMENT,
           new ImageIcon(this.getClass().getResource("DeleteVertex.png")), 
           new java.awt.event.ActionListener() {
             public void actionPerformed(ActionEvent e) {
@@ -276,6 +286,7 @@ public class JTSTestBuilderToolBar {
           ,btnMove
           ,deleteVertexButton
           ,infoButton
+          ,selectComponentButton
           ,extractComponentButton
       );
 
@@ -290,6 +301,7 @@ public class JTSTestBuilderToolBar {
         strut(20),
         zoomButton,
         infoButton,
+        selectComponentButton,
         extractComponentButton,
         
         strut(20),

@@ -123,6 +123,7 @@ public class JTSOpCmd {
     .addOptionSpec(new OptionSpec(CommandOptions.FORMAT, 1))
     .addOptionSpec(new OptionSpec(CommandOptions.LIMIT, 1))
     .addOptionSpec(new OptionSpec(CommandOptions.OFFSET, 1))
+    .addOptionSpec(new OptionSpec(CommandOptions.OUTPUT, 1))
     .addOptionSpec(new OptionSpec(CommandOptions.REPEAT, 1))
     .addOptionSpec(new OptionSpec(CommandOptions.QUIET, 0))
     .addOptionSpec(new OptionSpec(CommandOptions.SRID, 1))
@@ -153,6 +154,7 @@ public class JTSOpCmd {
   "           [ -q",
   "           [ -time ]",
   "           [ -v, -verbose ]",
+  "           [ -o filename ]",
   "           [ -help ]",
   "           [ -geomfunc classname ]",
   "           [ -op ]",
@@ -172,7 +174,7 @@ public class JTSOpCmd {
   "  -eachb          execute op on each element of B",
   "  -index          index the B geometries",
   "  -repeat         repeat the operation N times",
-  "  -where cond v   output geometry where operation result matches condition and value.",
+  "  -where cond val output geometry where operation result matches condition and value.",
   "                     Conditions are: eq, ne, ge, gt, le, lt",
   "  -validate       validate the result of each operation",
   "  -geomfunc       specifies class providing geometry operations",
@@ -182,6 +184,7 @@ public class JTSOpCmd {
   "  -explode        output atomic geometries",
   "  -f              output format to use.  Default is txt/wkt",
   "  -q              quiet mode - result is not output",
+  "  -o filename     write result output to filename",
   "===== Logging options:",
   "  -time           display execution time",
   "  -v, -verbose    display information about execution",
@@ -349,6 +352,10 @@ public class JTSOpCmd {
     cmdArgs.isIndexed = commandLine.hasOption(CommandOptions.INDEX);
     
     cmdArgs.isQuiet = commandLine.hasOption(CommandOptions.QUIET);
+
+    cmdArgs.outputFile = commandLine.hasOption(CommandOptions.OUTPUT) 
+        ? commandLine.getOptionArg(CommandOptions.OUTPUT, 1)
+        : null;
 
     cmdArgs.repeat = commandLine.hasOption(CommandOptions.REPEAT)
         ? commandLine.getOptionArgAsInt(CommandOptions.REPEAT, 0)

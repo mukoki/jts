@@ -12,6 +12,7 @@
 package org.locationtech.jts.coverage;
 
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.TopologyException;
 
 import junit.textui.TestRunner;
 import test.jts.GeometryTestCase;
@@ -38,6 +39,45 @@ public class CoverageUnionTest extends GeometryTestCase
         "GEOMETRYCOLLECTION EMPTY",
         null
             );
+  }
+
+  public void testHoleTouchingSide() {
+    checkUnion(
+        "GEOMETRYCOLLECTION (POLYGON ((1 9, 9 9, 9 6, 2 6, 1 9)), POLYGON ((1 1, 1 9, 2 6, 5 3, 9 6, 9 1, 1 1)))",
+        "POLYGON ((9 6, 9 1, 1 1, 1 9, 9 9, 9 6), (9 6, 2 6, 5 3, 9 6))"
+            );
+  }
+  
+  public void testHolesTouchingSide() {
+    checkUnion(
+        "GEOMETRYCOLLECTION (POLYGON ((1 9, 9 9, 9 6, 5 7, 2 6, 1 9)), POLYGON ((1 1, 1 9, 2 6, 4 3, 5 7, 7 3, 9 6, 9 1, 1 1)))",
+        "POLYGON ((9 9, 9 6, 9 1, 1 1, 1 9, 9 9), (5 7, 7 3, 9 6, 5 7), (2 6, 4 3, 5 7, 2 6))"
+            );
+  }
+  
+  public void testHolesTouching() {
+    checkUnion(
+        "GEOMETRYCOLLECTION (POLYGON ((1 9, 9 9, 9 6, 7 7, 5 7, 2 6, 1 9)), POLYGON ((1 1, 1 9, 2 6, 4 3, 5 7, 7 3, 7 7, 9 6, 9 1, 1 1)))",
+        "POLYGON ((9 9, 9 6, 9 1, 1 1, 1 9, 9 9), (5 7, 7 3, 7 7, 5 7), (2 6, 4 3, 5 7, 2 6))"
+            );
+  }
+  
+  public void testInvalidNodingError() {
+    checkError(
+        "GEOMETRYCOLLECTION (POLYGON ((0 0, 0 1, 1 1, 1 0, 0 0)), POLYGON ((1 0, 0.9 1, 2 1, 2 0, 1 0)))" );
+  }
+  
+  private void checkError(String wktCoverage) {
+    Geometry covGeom = read(wktCoverage);
+    Geometry[] coverage = toArray(covGeom);
+    try {
+      Geometry actual = CoverageUnion.union(coverage);
+    }
+    catch (TopologyException ex) {
+      // executes with no error
+      return;
+    }
+    fail("No error thrown for invalid input coverage");
   }
 
   private void checkUnion(String wktCoverage, String wktExpected) {

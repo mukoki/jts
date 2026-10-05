@@ -18,9 +18,9 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
+import org.locationtech.jts.geom.MultiLineString;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.util.GeometryMapper;
-import org.locationtech.jts.io.WKTWriter;
 
 /**
  * Creates a curved geometry by replacing the segments
@@ -66,6 +66,37 @@ public class CubicBezierCurve {
   public static Geometry bezierCurve(Geometry geom, double alpha, double skew) {
     CubicBezierCurve curve = new CubicBezierCurve(geom, alpha, skew);
     return curve.getResult();
+  }
+  
+  /**
+   * Gets a linear geometry containing the generated control points 
+   * for the Bezier curve defined by the segments of the input and a parameter
+   * controlling how curved the result should be, with a skew factor
+   * affecting the curve shape at each vertex.
+   * 
+   * @param geom the geometry defining the curve
+   * @param alpha curvedness parameter (0 is linear, 1 is round, >1 is increasingly curved)
+   * @return the line(s) containing the control points
+   */
+  public static Geometry controlPoints(Geometry geom, double alpha) {
+    CubicBezierCurve curve = new CubicBezierCurve(geom, alpha);
+    return curve.getControlPoints();
+  }
+  
+  /**
+   * Gets a linear geometry containing the generated control points 
+   * for the Bezier curve defined by the segments of the input and a parameter
+   * controlling how curved the result should be, with a skew factor
+   * affecting the curve shape at each vertex.
+   * 
+   * @param geom the geometry defining the curve
+   * @param alpha curvedness parameter (0 is linear, 1 is round, >1 is increasingly curved)
+   * @param skew the skew parameter (0 is none, positive skews towards longer side, negative towards shorter
+   * @return the line(s) containing the control points
+   */
+  public static Geometry controlPoints(Geometry geom, double alpha, double skew) {
+    CubicBezierCurve curve = new CubicBezierCurve(geom, alpha, skew);
+    return curve.getControlPoints();
   }
   
   /**
@@ -157,7 +188,7 @@ public class CubicBezierCurve {
    */
   public Geometry getResult() {
     bezierCurvePts = new Coordinate[numVerticesPerSegment];
-    interpolationParam = computeIterpolationParameters(numVerticesPerSegment);
+    interpolationParam = computeInterpolationParameters(numVerticesPerSegment);
 
     return GeometryMapper.flatMap(inputGeom, 1, new GeometryMapper.MapOp() {
       
@@ -175,7 +206,39 @@ public class CubicBezierCurve {
     });
   }
   
+  /**
+   * Gets the computed control points for the Bezier curve.
+   * 
+   * @return a linear geometry holding the control points
+   */
+  public Geometry getControlPoints() {
+    bezierCurvePts = new Coordinate[numVerticesPerSegment];
+    interpolationParam = computeInterpolationParameters(numVerticesPerSegment);
+
+    return GeometryMapper.flatMap(inputGeom, 1, new GeometryMapper.MapOp() {
+      
+      @Override
+      public Geometry map(Geometry geom) {
+        if (geom instanceof LineString) {
+          Coordinate[] control = controlPoints(geom.getCoordinates(), false);
+          return geom.getFactory().createLineString(control);
+        }
+        if (geom instanceof Polygon ) {
+          Polygon poly = (Polygon) geom;
+          Coordinate[] control = controlPoints(poly.getExteriorRing().getCoordinates(), true);
+          //TODO: include holes as well
+          return geom.getFactory().createLineString(control);
+        } 
+        //-- Points
+        return geom.copy();
+      }
+    });
+  }
+  
   private LineString bezierLine(LineString ls) {
+    //-- can't curve a single segment
+    if (ls.getNumPoints() <= 2)
+      return (LineString) ls.copy();
     Coordinate[] coords = ls.getCoordinates();
     CoordinateList curvePts = bezierCurve(coords, false);
     curvePts.add(coords[coords.length - 1].copy(), false);
@@ -202,8 +265,12 @@ public class CubicBezierCurve {
   }
   
   private CoordinateList bezierCurve(Coordinate[] coords, boolean isRing) {
-    Coordinate[] control = controlPoints(coords, isRing);
     CoordinateList curvePts = new CoordinateList();
+    //-- can't curve a single segment
+    if (coords.length <= 2)
+      return curvePts;
+    
+    Coordinate[] control = controlPoints(coords, isRing);
     for (int i = 0; i < coords.length - 1; i++) {
       int ctrlIndex = 2 * i;
       addCurve(coords[i], coords[i + 1], control[ctrlIndex], control[ctrlIndex + 1], curvePts);
@@ -271,7 +338,7 @@ public class CubicBezierCurve {
    * @param alpha determines the curviness
    * @return the control point array
    */
-  private Coordinate[] controlPoints(Coordinate[] coords, boolean isRing, double alpha, double skew) {
+  private static Coordinate[] controlPoints(Coordinate[] coords, boolean isRing, double alpha, double skew) {
     int N = coords.length;
     int start = 1; 
     int end = N - 1;
@@ -344,7 +411,7 @@ public class CubicBezierCurve {
    * @param coords
    * @param ctrl
    */
-  private void setLineEndControlPoints(Coordinate[] coords, Coordinate[] ctrl) {
+  private static void setLineEndControlPoints(Coordinate[] coords, Coordinate[] ctrl) {
     int N = ctrl.length;
     ctrl[0] = mirrorControlPoint(ctrl[1], coords[1], coords[0]);
     ctrl[N - 1] = mirrorControlPoint(ctrl[N - 2], 
@@ -429,7 +496,7 @@ public class CubicBezierCurve {
    * @param n number of vertices
    * @return array of double[4] holding the parameter values
    */
-  private static double[][] computeIterpolationParameters(int n) {
+  private static double[][] computeInterpolationParameters(int n) {
     double[][] param = new double[n][4];
     for (int i = 0; i < n; i++) {
       double t = (double) i / (n - 1);

@@ -13,14 +13,12 @@
 package org.locationtech.jtstest.testbuilder.model;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jtstest.testbuilder.AppStrings;
-import org.locationtech.jtstest.testbuilder.geom.ComponentLocater;
+import org.locationtech.jtstest.testbuilder.geom.GeometryElementLocater;
 import org.locationtech.jtstest.testbuilder.geom.GeometryLocation;
 import org.locationtech.jtstest.testbuilder.geom.SegmentExtracter;
 
@@ -33,11 +31,11 @@ public class LayerList
     return list;
   }
   
-  public static LayerList create(LayerList l1, LayerList l2, LayerList l3) {
+  public static LayerList create(LayerList... lists) {
     LayerList list = new LayerList();
-    list.add(l1);
-    list.add(l2);
-    list.add(l3);
+    for (LayerList ll : lists) {
+      list.add(ll);
+    }
     return list;
   }
   
@@ -52,9 +50,9 @@ public class LayerList
   }
 
   void initFixed() {
-    layers.add(new Layer(AppStrings.GEOM_LABEL_A));
-    layers.add(new Layer(AppStrings.GEOM_LABEL_B));
-    layers.add(new Layer(AppStrings.GEOM_LABEL_RESULT));
+    layers.add(new Layer(AppStrings.GEOM_LABEL_A, false));
+    layers.add(new Layer(AppStrings.GEOM_LABEL_B, false));
+    layers.add(new Layer(AppStrings.GEOM_LABEL_RESULT, false));
   }
   
   public int size() { return layers.size(); }
@@ -68,26 +66,26 @@ public class LayerList
    * 
    * @param pt
    * @param tolerance
-   * @return component found, or null
+   * @return element found, or null
    */
-  public Geometry getComponent(Coordinate pt, double tolerance)
+  public Geometry getElement(Coordinate pt, double tolerance)
   {
     for (int i = 0; i < size(); i++) {
 
       Layer lyr = getLayer(i);
       Geometry geom = lyr.getGeometry();
       if (geom == null) continue;
-      ComponentLocater locater = new ComponentLocater(geom);
-      List locs = locater.getComponents(pt, tolerance);
+      GeometryElementLocater locater = new GeometryElementLocater(geom);
+      List locs = locater.getElements(pt, tolerance);
       if (locs.size() > 0) {
         GeometryLocation loc = (GeometryLocation) locs.get(0);
-        return loc.getComponent();
+        return loc.getElement();
       }
     }
     return null;
   }
   
-  public Geometry[] getComponents(Geometry aoi, boolean isSegments)
+  public Geometry[] getElements(Geometry aoi, boolean isSegments)
   {
     Geometry comp[] = new Geometry[2];
     for (int i = 0; i < 2; i++) {
@@ -98,36 +96,10 @@ public class LayerList
         comp[i] = SegmentExtracter.extract(geom, aoi);
       }
       else {
-        comp[i] = extractComponents(geom, aoi);
+        comp[i] = GeometryElementLocater.extractElements(geom, aoi);
       }
     }
     return comp;
-  }
-  
-  private Geometry extractComponents(Geometry parentGeom, Geometry aoi)
-  {
-    ComponentLocater locater = new ComponentLocater(parentGeom);
-    List locs = locater.getComponents(aoi);
-    List geoms = extractLocationGeometry(locs);
-    if (geoms.size() <= 0)
-      return null;
-    if (geoms.size() == 1) 
-      return (Geometry) geoms.get(0);
-    // if parent was a GC, ensure returning a GC
-    if (parentGeom.getGeometryType().equals("GeometryCollection"))
-      return parentGeom.getFactory().createGeometryCollection(GeometryFactory.toGeometryArray(geoms));
-    // otherwise return MultiGeom
-    return parentGeom.getFactory().buildGeometry(geoms);
-  }
-  
-  private List extractLocationGeometry(List locs)
-  {
-    List geoms = new ArrayList();
-    for (Iterator i = locs.iterator(); i.hasNext();) {
-      GeometryLocation loc = (GeometryLocation) i.next();
-      geoms.add(loc.getComponent());
-    }
-    return geoms;
   }
 
   public Layer add(Layer lyr, boolean atTop) {

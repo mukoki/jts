@@ -16,6 +16,7 @@ import java.util.List;
 
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateArrays;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
@@ -45,7 +46,7 @@ public class CoverageGapFinder {
    * 
    * @param coverage a set of polygons forming a polygonal coverage
    * @param gapWidth the maximum width of gap to detect
-   * @return a geometry indicating the locations of gaps (which is empty if no gaps were found), or null if the coverage was empty
+   * @return a MultiPolygon indicating the locations of gaps (empty if no gaps were found), or null if the coverage was empty
    */
   public static Geometry findGaps(Geometry[] coverage, double gapWidth) {
     CoverageGapFinder finder = new CoverageGapFinder(coverage);
@@ -74,34 +75,30 @@ public class CoverageGapFinder {
     Geometry union = CoverageUnion.union(coverage);
     List<Polygon> polygons = PolygonExtracter.getPolygons(union);
     
-    List<LineString> gapLines = new ArrayList<LineString>();
+    List<Polygon> gapLines = new ArrayList<Polygon>();
     for (Polygon poly : polygons) {
       for (int i = 0; i < poly.getNumInteriorRing(); i++) {
         LinearRing hole = poly.getInteriorRingN(i);
         if (isGap(hole, gapWidth)) {
-          gapLines.add(copyLine(hole));
+          gapLines.add(toPolygon(hole));
         }
       }
     }
     return union.getFactory().buildGeometry(gapLines);
   }
 
-  private LineString copyLine(LinearRing hole) {
-    Coordinate[] pts = hole.getCoordinates();
-    return hole.getFactory().createLineString(pts);
+  private Polygon toPolygon(LinearRing hole) {
+    Coordinate[] pts = CoordinateArrays.copyDeep(hole.getCoordinates());
+    return hole.getFactory().createPolygon(pts);
   }
 
-  private boolean isGap(LinearRing hole, double gapWidth) {
+  private boolean isGap(LinearRing hole, double maxGapWidth) {
     Geometry holePoly = hole.getFactory().createPolygon(hole);
     //-- guard against bad input
-    if (gapWidth <= 0.0)
+    if (maxGapWidth <= 0.0)
       return false;
     
-    double tolerance = gapWidth / 100;
-    //TODO: improve MIC class to allow short-circuiting when radius is larger than a value
-    LineString line = MaximumInscribedCircle.getRadiusLine(holePoly, tolerance);
-    double width = line.getLength() * 2;
-    return width <= gapWidth;
+    return MaximumInscribedCircle.isRadiusWithin(holePoly, 0.5 * maxGapWidth);
   }
 
 }

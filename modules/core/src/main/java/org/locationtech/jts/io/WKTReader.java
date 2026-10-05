@@ -80,6 +80,8 @@ import org.locationtech.jts.util.AssertionFailedException;
  * <li>The reader uses <tt>Double.parseDouble</tt> to perform the conversion of ASCII
  * numbers to floating point.  This means it supports the Java
  * syntax for floating point literals (including scientific notation).
+ * <li><tt>NaN</tt>, <tt>Inf</tt> and <tt>-Inf</tt> ordinate symbols are supported (case-insensitive), 
+ * which convert to the corresponding IEE-754 value
  * </ul>
  * <h3>Syntax</h3>
  * The following syntax specification describes the version of Well-Known Text
@@ -131,13 +133,38 @@ import org.locationtech.jts.util.AssertionFailedException;
  * <i>Coordinate:
  *         Number Number Number<sub>opt</sub> Number<sub>opt</sub></i>
  *
- * <i>Number:</i> A Java-style floating-point number (including <tt>NaN</tt>, with arbitrary case)
+ * <i>Number:</i> A Java-style floating-point number (including <tt>NaN</tt>, <tt>Inf</tt> and <tt>-Inf</tt>, case-independent)
  *
  * <i>Dimension:</i>
  *         <b>Z</b>|<b> Z</b>|<b>M</b>|<b> M</b>|<b>ZM</b>|<b> ZM</b>
  *
  * </pre></blockquote>
- *
+ * 
+ * <h3>Examples</h3>
+ * <pre>
+ * POINT (0 0)
+ * POINT EMPTY
+ * LINESTRING (0 0, 0 1, 1 2)
+ * LINESTRING EMPTY
+ * POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))
+ * POLYGON ((0 0, 4 0, 4 4, 0 4, 0 0), (1 1, 1 2, 2 2, 2 1, 1 1))
+ * POLYGON EMPTY
+ * MULTIPOINT ((0 0), (1 1))
+ * MULTILINESTRING ((0 0, 1 1), (2 2, 3 3))
+ * MULTIPOLYGON (((1 1, 1 3, 3 3, 3 1, 1 1)), ((4 3, 6 3, 6 1, 4 1, 4 3)))
+ * GEOMETRYCOLLECTION (MULTIPOINT((0 0), (1 1)), POINT(3 4), LINESTRING(2 3, 3 4))
+ * 
+ * POINTZ (0 0 0)
+ * POINT Z (0 0 0)
+ * POINT Z EMPTY
+ * POINTM (0 0 0)
+ * POINT M (0 0 0)
+ * POINTZM (0 0 0 0)
+ * POINT ZM (0 0 0 0)
+ * 
+ * POINT (Inf Nan)
+ * POINT (Inf -Inf)
+ * </pre>
  *
  *@version 1.7
  * @see WKTWriter
@@ -148,6 +175,8 @@ public class WKTReader
   private static final String L_PAREN = "(";
   private static final String R_PAREN = ")";
   private static final String NAN_SYMBOL = "NaN";
+  private static final String INF_SYMBOL = "Inf";
+  private static final String NEG_INF_SYMBOL = "-Inf";
 
   private GeometryFactory geometryFactory;
   private CoordinateSequenceFactory csFactory;
@@ -495,6 +524,13 @@ S  */
         if (tokenizer.sval.equalsIgnoreCase(NAN_SYMBOL)) {
           return Double.NaN;
         }
+        if (tokenizer.sval.equalsIgnoreCase(INF_SYMBOL)) {
+          return Double.POSITIVE_INFINITY;
+        }
+        if (tokenizer.sval.equalsIgnoreCase(NEG_INF_SYMBOL)) {
+          return Double.NEGATIVE_INFINITY;
+        }
+        //TODO: handle -Inf ?
         else {
           try {
             return Double.parseDouble(tokenizer.sval);

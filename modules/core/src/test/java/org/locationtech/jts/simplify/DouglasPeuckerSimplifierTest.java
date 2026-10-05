@@ -86,6 +86,12 @@ public class DouglasPeuckerSimplifierTest
         10,
         "LINESTRING (0 5, 5 5)");
   }
+
+  public void testLineStringWithFourDimensions() {
+    checkDPXYZM("LINESTRING ZM(0 5 114.6 1709024189000, 1 5 114.6 1709024190000, 2 5 114.5 1709024192000, 5 5 114.5 1709024196000)",
+        10,
+        "LINESTRING ZM(0 5 114.6 1709024189000, 5 5 114.5 1709024196000)");
+  }
   
   public void testMultiPoint() {
     checkDPNoChange("MULTIPOINT(80 200, 240 200, 240 60, 80 60, 80 200, 140 199, 120 120)",
@@ -118,14 +124,14 @@ public class DouglasPeuckerSimplifierTest
   /**
    * Test that a polygon made invalid by simplification
    * is fixed in a sensible way.
-   * Fixed by buffer(0) area-base orientation
+   * GeometryFixer preserves both lobes of the invalid ring.
    * See https://github.com/locationtech/jts/issues/498
    */
   public void testInvalidPolygonFixed() {
     checkDP(
         "POLYGON ((21.32686 47.78723, 21.32386 47.79023, 21.32186 47.80223, 21.31486 47.81023, 21.32786 47.81123, 21.33986 47.80223, 21.33886 47.81123, 21.32686 47.82023, 21.32586 47.82723, 21.32786 47.82323, 21.33886 47.82623, 21.34186 47.82123, 21.36386 47.82223, 21.40686 47.81723, 21.32686 47.78723))", 
         0.0036,
-        "POLYGON ((21.32686 47.78723, 21.31486 47.81023, 21.32786 47.81123, 21.33986 47.80223, 21.328068201892744 47.823286782334385, 21.33886 47.82623, 21.34186 47.82123, 21.40686 47.81723, 21.32686 47.78723))"
+        "MULTIPOLYGON (((21.31486 47.81023, 21.32786 47.81123, 21.33986 47.80223, 21.328068201892744 47.823286782334385, 21.33886 47.82623, 21.34186 47.82123, 21.40686 47.81723, 21.32686 47.78723, 21.31486 47.81023)), ((21.32586 47.82723, 21.328068201892744 47.823286782334385, 21.32786 47.82323, 21.32586 47.82723)))"
         );
   }
 
@@ -166,7 +172,13 @@ public class DouglasPeuckerSimplifierTest
     Geometry expected = read(wktExpected);
     checkEqual(expected, result);
   }
-  
+    private void checkDPXYZM(String wkt, double tolerance, String wktExpected) {
+    Geometry geom = read(wkt);
+    Geometry result = DouglasPeuckerSimplifier.simplify(geom, tolerance);
+    Geometry expected = read(wktExpected);
+    checkEqualXYZM(expected, result);
+  }
+
   private void checkDPNoChange(String wkt, double tolerance) {
     checkDP(wkt, tolerance, wkt);
   }

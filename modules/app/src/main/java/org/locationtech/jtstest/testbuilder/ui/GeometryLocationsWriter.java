@@ -22,7 +22,7 @@ import org.locationtech.jts.geom.GeometryCollection;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Point;
-import org.locationtech.jtstest.testbuilder.geom.ComponentLocater;
+import org.locationtech.jtstest.testbuilder.geom.GeometryElementLocater;
 import org.locationtech.jtstest.testbuilder.geom.FacetLocater;
 import org.locationtech.jtstest.testbuilder.geom.GeometryLocation;
 import org.locationtech.jtstest.testbuilder.geom.VertexLocater;
@@ -115,7 +115,7 @@ public class GeometryLocationsWriter
     Geometry geom = lyr.getGeometry();
     if (geom == null) return null;
     
-    String locStr = writeComponentLocation(geom, p, tolerance);
+    String locStr = writeElementLocation(geom, p, tolerance);
     String facetStr = writeFacetLocation(geom, p, tolerance);
     if (facetStr == null) 
       return locStr;
@@ -123,17 +123,17 @@ public class GeometryLocationsWriter
   }
   
   
-  public String writeComponentLocation(Geometry geom, Coordinate p, double tolerance)
+  public String writeElementLocation(Geometry geom, Coordinate p, double tolerance)
   {
-    ComponentLocater locater = new ComponentLocater(geom);
-    List locs = locater.getComponents(p, tolerance);
+    GeometryElementLocater locater = new GeometryElementLocater(geom);
+    List locs = locater.getElements(p, tolerance);
     
     StringBuffer buf = new StringBuffer();
     int count = 0;
     for (Iterator i = locs.iterator(); i.hasNext(); ) {
     	
     	GeometryLocation loc = (GeometryLocation) i.next();
-    	Geometry comp = loc.getComponent();
+    	Geometry comp = loc.getElement();
       
       String path = loc.pathString();
       path = path.length() == 0 ? "" : path;
@@ -145,6 +145,12 @@ public class GeometryLocationsWriter
       }
       else {
         buf.append("(" + comp.getNumPoints() + ")");
+        if (comp.getDimension() >= 1) {
+          buf.append("  Len: " + comp.getLength());
+        }
+        if (comp.getDimension() >= 2) {
+          buf.append("  Area: " + comp.getArea());
+        }
       }
       if (comp.getUserData() != null) {
       	buf.append("  Data: ");
@@ -166,26 +172,26 @@ public class GeometryLocationsWriter
   public String writeFacetLocation(Geometry geom, Coordinate p, double tolerance)
   {
     FacetLocater locater = new FacetLocater(geom);
-    List locs = locater.getLocations(p, tolerance);
-    List vertexLocs = FacetLocater.filterVertexLocations(locs);
+    List<GeometryLocation> locs = locater.getLocations(p, tolerance);
+    /*
+    List<GeometryLocation> vertexLocs = FacetLocater.filterVertexLocations(locs);
     
     // only show vertices if some are present, to avoid confusing with segments
     if (! vertexLocs.isEmpty()) 
       return writeFacetLocations(vertexLocs);
-    
+    */
     // write 'em all
     return writeFacetLocations(locs);
   }
     
-  private String writeFacetLocations(List locs)
+  private String writeFacetLocations(List<GeometryLocation> locs)
   {
     if (locs.size() <= 0) return null;
     
     StringBuffer buf = new StringBuffer();
     boolean isFirst = true;
     int count = 0;
-    for (Iterator i = locs.iterator(); i.hasNext(); ) {
-    	GeometryLocation loc = (GeometryLocation) i.next();
+    for (GeometryLocation loc : locs) {
 
     	if (! isFirst) {
     		buf.append(eol);
@@ -209,16 +215,16 @@ public class GeometryLocationsWriter
 
   private String componentType(GeometryLocation loc) {
     String compType = "";
-    if (loc.getComponent() instanceof LinearRing) {
-      boolean isCCW = Orientation.isCCW(loc.getComponent().getCoordinates());
+    if (loc.getElement() instanceof LinearRing) {
+      boolean isCCW = Orientation.isCCW(loc.getElement().getCoordinates());
       compType = "Ring" 
         + (isCCW ? "-CCW" : "-CW ")
           + " ";
     }
-    else if (loc.getComponent() instanceof LineString) { 
+    else if (loc.getElement() instanceof LineString) { 
       compType = "Line  ";
     }
-    else if (loc.getComponent() instanceof Point) { 
+    else if (loc.getElement() instanceof Point) { 
       compType = "Point ";
     }
     return compType;

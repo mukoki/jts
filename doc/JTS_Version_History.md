@@ -17,9 +17,85 @@ Distributions for older JTS versions can be obtained at the
 
 <!-- ================================================================ -->
 
-# Version 1.x
+# Version 1.21
 
-*Release Date: TBD*
+*Release Date: TBD**
+
+### New Features
+
+* Add `CoverageCleaner` (#1126)
+* Add `MinimumBoundingTriangle` (#1160)
+* Add `DirectedHausdorffDistance` class (#1182)
+
+### Functionality Improvements
+
+* Improve `DouglasPeuckerSimplifier` to preserve XYZM coordinates (#1045)
+* Improve `OffsetCurve` to support miter joins for polygonal input (#1109)
+* Add `MaximumInscribedCircle` fast exact calculation for simple shapes (#1123)
+* Add `MaximumInscribedCircle.isRadiusWithin` function (#1125)
+* Add auto-tolerance to `MaximumInscribedCircle` and `LargestEmptyCircle` (#1128)
+* Add `KdTree` methods `nearestNeighbor` and `nearestNeighbors` (#1114)
+* Allow `WKTReader` to read `Inf` and `-Inf` ordinates (#1166, #1167)
+* Fix `KMLReader` XML parser security hole (#1204)
+* Add `setRandom(Random)` to `RandomPointsBuilder` and `RandomPointsInGridBuilder` (#1214)
+* Use `GeometryFixer` for `DouglasPeuckerSimplifier` and `Densifier` repairs (#1235)
+
+### Bug Fixes
+
+* Fix `ConcaveHullOfPolygons` nested shell handling (#1081)
+* Fix `ConvexHull` to avoid modifying input (#1083)
+* Fix `TopologyPreservingSimplifier` to avoid jumping components (#1096)
+* Fix `VWSimplifier` coordinate aliasing (#1107)
+* Add `BufferOp` hole erosion heuristic for rings (#1117)
+* Fix `BufferOp` element erosion for negative distance (#1119)
+* Fix writing XYM geometries as WKB (#1092)
+* Fix `DepthSegment` comparator (#1132)
+* Fix `BoundaryChainNoder` to split chains at self-touch nodes (also fixes `CoverageUnion`) (#1134)
+* Fix `OffsetCurve` `simplifyFactor` parameter handling (#1151)
+* Fix `CoordinateArrays.hasRepeatedOrInvalidPoints` to check first point (#1157)
+* Fix `GeometryFactory.create` to deep-copy polygonal geometry (#1158)
+* Add buffer artifact removal heuristic for single-element inputs (#1161)
+* Fix `BufferOp` to handle geometries with all-invalid coordinate lists (#1165)
+* Fix CoordinateList.clone() to copy correctly (#1168)
+* Add Voronoi snapping heuristic to fix invalid diagram topology (#1174)
+* Fix `LineSegment.project` to handle segments projecting onto a single endpoint (#1179)
+* Fix DD equals and compareTo (#1186)
+* Fix `RelateNG.computeLineEnds` incorrectly skipping boundary points for disjoint line components (#1175)
+* Add `equals` and `hashCode` consistent with `compareTo` for value-semantics `Comparable` classes (`LinearLocation`, `EdgeIntersection`, `NodeSection`, `OrientedCoordinateArray`) (#1184)
+* Add `DD.hashCode` consistent with `DD.equals` (#1186)
+* Fix `OverlayEdge` to include first point when adding coordinates (#1187)
+* Make `HalfEdge.compareAngularDirection` more robust (#1224)
+* Improve `Quadrant` computation robustness by using vector endpoints (#1226)
+* Fix NaN handling in `LinearLocation` and `EdgeIntersection` `compareTo` (#1229)
+
+### Performance Improvements
+
+* Fix `RelateNG` to cache in prepared A-L cases (#1099)
+* Add `GeometryCollection` dimension cache (#1103)
+* Add `MathUtil.hypot` function and use it for length calculations (#1112)
+* Improve `LineStringSnapper` performance by using squared distance (#1111)
+* Add spatial index to OverlayNG `PolygonBuilder.placeFreeHoles` (#1173)
+
+## JTS TestBuilder
+
+### Functionality Improvements
+
+* Add Select Elements tool with virtual layer
+* Add Layer style presets
+* Add Layer List Zoom to Geometry button
+* Add Layer List Copy Geometry button
+
+### Bug Fixes
+
+* Fix `BaseGeometryFunction.hashCode` to be consistent with `equals` (exclude parameter names)
+
+## JTS TestRunner
+### Functionality Improvements
+* Process XML tests in a stable order (sorted by filename)
+
+# Version 1.20.0
+
+*Release Date: 09/18/2024*
 
 ### New Features
 * Add `CoverageValidator` `CoveragePolygonValidator` (#900)
@@ -31,7 +107,8 @@ Distributions for older JTS versions can be obtained at the
 * Add `ConcaveHull.alphaShape` function (#952)
 * Add `OffsetCurve` Joined mode (#956)
 * Add `PointLocation.isOnSegment` function (#1048)
-* Addd `RelateNG` API for improved topological relationship functionality and performance (#1052, #1055)
+* Add `RelateNG` API for improved topological relationship functionality and performance (#1052, #1055)
+* Add system property `jts.relate=ng` to enable use of RelateNG in `Geometry` methods (#1073)
 
 ### Functionality Improvements
 * Improve `TopologyPreservingSimplifier` to prevent edge-disjoint line collapse (#925)
@@ -44,6 +121,7 @@ Distributions for older JTS versions can be obtained at the
 * Improve CoverageSimplifier with ring removal, smoothing, inner/outer and per-feature tolerances (#1060)
 
 ### Bug Fixes
+* Fix `WKBReader` and `WKBWriter` handling of M measures when writing to WKB and reading from WKB (#734)
 * Fix `PreparedGeometry` handling of EMPTY elements (#904)
 * Fix `WKBReader` parsing of WKB containing multiple empty elements (#905)
 * Fix `LineSegment.orientationIndex(LineSegment)` to correct orientation for non-collinear segments on right (#914)

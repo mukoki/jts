@@ -19,6 +19,7 @@ import org.locationtech.jts.algorithm.LineIntersector;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.algorithm.RobustLineIntersector;
 import org.locationtech.jts.io.WKTConstants;
+import org.locationtech.jts.math.MathUtil;
 
 
 /**
@@ -337,7 +338,7 @@ public class LineSegment
     
     double dx = p1.x - p0.x;
     double dy = p1.y - p0.y;
-    double len = Math.hypot(dx, dy);
+    double len = MathUtil.hypot(dx, dy);
     double ux = 0.0;
     double uy = 0.0;
     if (offsetDistance != 0.0) {
@@ -366,36 +367,39 @@ public class LineSegment
    * equal the vector for the projection of <tt>p</tt> on the line
    * defined by this segment.
    * <p>
-   * The projection factor will lie in the range <tt>(-inf, +inf)</tt>,
-   * or be <code>NaN</code> if the line segment has zero length..
+   * The projection factor lies in the range <tt>(-inf, +inf)</tt>.
+   * It is <code>NaN</code> if the line segment has zero length..
    * 
    * @param p the point to compute the factor for
-   * @return the projection factor for the point
+   * @return the projection factor for the point, or NaN
    */
   public double projectionFactor(Coordinate p)
   {
     if (p.equals(p0)) return 0.0;
     if (p.equals(p1)) return 1.0;
-    // Otherwise, use comp.graphics.algorithms Frequently Asked Questions method
-    /*     	      AC dot AB
+    /**
+     * Use comp.graphics.algorithms Frequently Asked Questions method
+     * 
+                	      AC dot AB
                    r = ---------
                          ||AB||^2
+                         
                 r has the following meaning:
-                r=0 P = A
-                r=1 P = B
-                r<0 P is on the backward extension of AB
-                r>1 P is on the forward extension of AB
+                r=0 : P = A
+                r=1 : P = B
+                r<0 : P is on the backward extension of AB
+                r>1 : P is on the forward extension of AB
                 0<r<1 P is interior to AB
         */
     double dx = p1.x - p0.x;
     double dy = p1.y - p0.y;
-    double len = dx * dx + dy * dy;
+    double lenSq = dx * dx + dy * dy;
     
     // handle zero-length segments
-    if (len <= 0.0) return Double.NaN;
+    if (lenSq <= 0.0) return Double.NaN;
     
     double r = ( (p.x - p0.x) * dx + (p.y - p0.y) * dy )
-              / len;
+              / lenSq;
     return r;
   }
 
@@ -464,16 +468,30 @@ public class LineSegment
     double pf0 = projectionFactor(seg.p0);
     double pf1 = projectionFactor(seg.p1);
     // check if segment projects at all
-    if (pf0 >= 1.0 && pf1 >= 1.0) return null;
-    if (pf0 <= 0.0 && pf1 <= 0.0) return null;
+    if (pf0 > 1.0 && pf1 > 1.0) return null;
+    if (pf0 < 0.0 && pf1 < 0.0) return null;
 
-    Coordinate newp0 = project(seg.p0, pf0);
-    if (pf0 < 0.0) newp0 = p0;
-    if (pf0 > 1.0) newp0 = p1;
+    Coordinate newp0;
+    if (pf0 < 0.0) {
+      newp0 = p0;
+    }
+    else if (pf0 > 1.0) {
+      newp0 = p1;
+    }
+    else {
+      newp0 = project(seg.p0, pf0);
+    }
 
-    Coordinate newp1 = project(seg.p1, pf1);
-    if (pf1 < 0.0) newp1 = p0;
-    if (pf1 > 1.0) newp1 = p1;
+    Coordinate newp1;
+    if (pf1 < 0.0) {
+      newp1 = p0;
+    }
+    else if (pf1 > 1.0) {
+      newp1 = p1;
+    }
+    else {
+      newp1 = project(seg.p1, pf1);
+    }
 
     return new LineSegment(newp0, newp1);
   }

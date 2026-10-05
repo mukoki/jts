@@ -11,6 +11,8 @@
  */
 package org.locationtech.jts.operation.relateng;
 
+import org.locationtech.jts.geom.IntersectionMatrix;
+
 import junit.textui.TestRunner;
 
 public class RelateNGTest extends RelateNGTestCase {
@@ -210,6 +212,22 @@ public class RelateNGTest extends RelateNGTestCase {
     String a = "LINESTRING (60 0, 20 80, 100 80, 80 120, 40 140)";
     String b = "LINESTRING (60 40, 140 40, 140 160, 0 160)";
     checkRelate(a, b, "FF1FF0102");
+    checkIntersectsDisjoint(a, b, false);
+    checkContainsWithin(a, b, false);
+    checkTouches(a, b, false);
+  }
+  
+  /**
+   * Case from https://github.com/locationtech/jts/issues/1175
+   * Tests that boundary points for disjoint line components are not skipped
+   * by the exterior intersection optimization in computeLineEnds().
+   * The optimization must track interior and boundary exterior intersections separately.
+   */
+  public void testLineDisjointMultiLineWithBoundaryInExterior_JTS1175() {
+    String a = "LINESTRING(10 10,20 20)";
+    String b = "MULTILINESTRING((0 0,1 0),(1 0,2 0),(-1 0,0 0))";
+    checkRelate(a, b, "FF1FF0102");
+    checkRelate(b, a, "FF1FF0102");
     checkIntersectsDisjoint(a, b, false);
     checkContainsWithin(a, b, false);
     checkTouches(a, b, false);
@@ -597,27 +615,66 @@ public class RelateNGTest extends RelateNGTestCase {
     checkRelate(a, b, "212F01FF2");
   }
   
-  //================  Repeated Points  ==============
+  //================  EMPTY geometries  ==============
 
-  public void testEmptyEquals() {
-    String empties[] = {
-        "POINT EMPTY",
-        "LINESTRING EMPTY",
-        "POLYGON EMPTY",
-        "MULTIPOINT EMPTY",
-        "MULTILINESTRING EMPTY",
-        "MULTIPOLYGON EMPTY",
-        "GEOMETRYCOLLECTION EMPTY"
-    };
-    int nempty = 7;
-    for (int i = 0; i < nempty; i++) {
-      for (int j = 0; j < nempty; j++) {
-        String a = empties[i];
+  String empties[] = {
+      "POINT EMPTY",
+      "LINESTRING EMPTY",
+      "POLYGON EMPTY",
+      "MULTIPOINT EMPTY",
+      "MULTILINESTRING EMPTY",
+      "MULTIPOLYGON EMPTY",
+      "GEOMETRYCOLLECTION EMPTY"
+  };
+  
+  public void testEmptyEmpty() {
+    for (int i = 0; i < empties.length; i++) {
+      String a = empties[i];
+      
+      for (int j = 0; j < empties.length; j++) {
         String b = empties[j];
         checkRelate(a, b, "FFFFFFFF2");
-        //-- currently in JTS empty geometries do NOT test equal
-         checkEquals(a, b, false);
+        //-- empty geometries are all topologically equal
+        checkEquals(a, b, true);
+        
+        checkIntersectsDisjoint(a, b, false);
+        checkContainsWithin(a, b, false);
       }
+    }  
+  }
+  
+  public void testEmptyNonEmpty() {
+    String nonEmptyPoint = "POINT (1 1)";
+    String nonEmptyLine = "LINESTRING (1 1, 2 2)";
+    String nonEmptyPolygon = "POLYGON ((1 1, 1 2, 2 1, 1 1))";
+    
+    for (int i = 0; i < empties.length; i++) {
+      String empty = empties[i];
+      
+      checkRelate(empty, nonEmptyPoint, "FFFFFF0F2");
+      checkRelate(nonEmptyPoint, empty, "FF0FFFFF2");
+      
+      checkRelate(empty, nonEmptyLine, "FFFFFF102");
+      checkRelate(nonEmptyLine, empty, "FF1FF0FF2");
+      
+      checkRelate(empty, nonEmptyPolygon, "FFFFFF212");
+      checkRelate(nonEmptyPolygon, empty, "FF2FF1FF2");
+      
+      checkEquals(empty, nonEmptyPoint, false);
+      checkEquals(empty, nonEmptyLine, false);
+      checkEquals(empty, nonEmptyPolygon, false);
+      
+      checkIntersectsDisjoint(empty, nonEmptyPoint, false);
+      checkIntersectsDisjoint(empty, nonEmptyLine, false);
+      checkIntersectsDisjoint(empty, nonEmptyPolygon, false);
+      
+      checkContainsWithin(empty, nonEmptyPoint, false);
+      checkContainsWithin(empty, nonEmptyLine, false);
+      checkContainsWithin(empty, nonEmptyPolygon, false);
+      
+      checkContainsWithin(nonEmptyPoint, empty, false);
+      checkContainsWithin(nonEmptyLine, empty, false);
+      checkContainsWithin(nonEmptyPolygon, empty, false);
     }  
   }
   
@@ -629,5 +686,17 @@ public class RelateNGTest extends RelateNGTestCase {
     checkPrepared(a, b);
   }
 
-  
+  public void testPreparedPA() {
+    String a = "POINT (5 5)";
+    String b = "POLYGON ((1 9, 9 9, 9 1, 1 1, 1 9))";
+    checkPrepared(a, b);
+    checkPrepared(b, a);
+    
+    //-- see https://github.com/libgeos/geos/issues/1275 (not a bug, but a good test to have)
+    String pattern = "T*****FF*";
+    String patternTrans = IntersectionMatrix.transpose(pattern);  // T*F**F***
+    checkPreparedMatches(a, b, pattern);
+    checkPreparedMatches(b, a, patternTrans); //
+  }
+
 }

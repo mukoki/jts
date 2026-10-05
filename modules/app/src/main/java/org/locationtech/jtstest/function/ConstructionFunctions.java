@@ -13,6 +13,7 @@ package org.locationtech.jtstest.function;
 
 import org.locationtech.jts.algorithm.Angle;
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
+import org.locationtech.jts.algorithm.MinimumBoundingTriangle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
 import org.locationtech.jts.algorithm.MinimumAreaRectangle;
 import org.locationtech.jts.algorithm.construct.LargestEmptyCircle;
@@ -37,6 +38,8 @@ public class ConstructionFunctions {
   public static Geometry minimumBoundingCircle(Geometry g) { return (new MinimumBoundingCircle(g)).getCircle();  }
   public static double minimumBoundingCircleDiameterLen(Geometry g) {      return 2 * (new MinimumBoundingCircle(g)).getRadius();  }
 
+  public static Geometry minimumBoundingTriangle(Geometry g) { return (new MinimumBoundingTriangle(g)).getTriangle();  }
+
   public static Geometry maximumDiameter(Geometry g) {      return (new MinimumBoundingCircle(g)).getMaximumDiameter();  }
   public static double maximumDiameterLength(Geometry g) {  
     return (new MinimumBoundingCircle(g)).getMaximumDiameter().getLength();
@@ -52,7 +55,7 @@ public class ConstructionFunctions {
   //--------------------------------------------
   
   @Metadata(description="Constructs the Maximum Inscribed Circle of a polygonal geometry")
-  public static Geometry maximumInscribedCircle(Geometry g,
+  public static Geometry maxInscribedCircle(Geometry g,
       @Metadata(title="Distance tolerance")
       double tolerance) { 
     MaximumInscribedCircle mic = new MaximumInscribedCircle(g, tolerance); 
@@ -63,14 +66,14 @@ public class ConstructionFunctions {
   }
   
   @Metadata(description="Constructs the center point of the Maximum Inscribed Circle of a polygonal geometry")
-  public static Geometry maximumInscribedCircleCenter(Geometry g,
+  public static Geometry maxInscribedCircleCenter(Geometry g,
       @Metadata(title="Distance tolerance")
       double tolerance) { 
     return MaximumInscribedCircle.getCenter(g, tolerance); 
   }
   
   @Metadata(description="Constructs a radius line of the Maximum Inscribed Circle of a polygonal geometry")
-  public static Geometry maximumInscribedCircleRadius(Geometry g,
+  public static Geometry maxInscribedCircleRadius(Geometry g,
       @Metadata(title="Distance tolerance")
       double tolerance) { 
     MaximumInscribedCircle mic = new MaximumInscribedCircle(g, tolerance); 
@@ -78,7 +81,7 @@ public class ConstructionFunctions {
   }
 
   @Metadata(description="Computes the radius of the Maximum Inscribed Circle of a polygonal geometry")
-  public static double maximumInscribedCircleRadiusLen(Geometry g,
+  public static double maxInscribedCircleRadiusLen(Geometry g,
       @Metadata(title="Distance tolerance")
       double tolerance) { 
     MaximumInscribedCircle mic = new MaximumInscribedCircle(g, tolerance); 
